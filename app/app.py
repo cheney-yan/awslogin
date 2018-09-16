@@ -96,12 +96,17 @@ def awslogin():
             else:
                 session_name = base_profile
         time_to_live = request.args.get('ttl')
-        return redirect(aws_signin_url(
+        url = aws_signin_url(
             base_profile=base_profile,
             session_name=session_name,
             assumed_role=assumed_role,
             time_to_live=time_to_live
-        ))
+        )
+        format = request.args.get('format', '')
+        if format.lower() == 'txt':
+            return url
+        else:
+            return redirect(url)
     except botocore.exceptions.ClientError as e:
         if "session credentials" in e.response['Error'].get('Message'):
             return "ERROR: You probably are using a assumed role profile. Base profile must be of static (IAM user) identity.", 400

@@ -52,8 +52,9 @@ You can also specify the expected TTL of the login URL. Besides, AWS also has it
 
 - baseProfile: Mandatory: The profile name in your local ~/.aws/credential(profile) file. This profile will be used to generate the signed URL. This profile must be an IAM user credential. If you are using an assumed role(including cross account assuming role), you must specify the roleArn parameter.
 - roleArn: Optional. When signing a login url from a role, BOTH baseProfile and roleArn parameters are required. The baseProfile is the source_profile that the role relies on. 
-- sessionName: Give it a meaningful name. This name will be appearing on your AWS web console as well as the AWS Cloudtrail.
-- ttl: How long do you want the Login session to be valid.
+- sessionName: Optional: Give it a meaningful name. This name will be appearing on your AWS web console as well as the AWS Cloudtrail.
+- ttl: Optional: How long do you want the Login session to be valid.
+- format: Optional: only "txt" is supported. It returns only in text format but not 302 url forward response.
 
 NOTE: Encode your parameters carefully, especially the `/` character in roleArn parameter.
 
