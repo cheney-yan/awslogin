@@ -1,3 +1,4 @@
+#!/bin/bash
 docker stop awslogin || true
 docker rm awslogin || true
 docker build -t local/awslogin .

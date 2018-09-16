@@ -1,3 +1,4 @@
+#!/bin/bash
 docker stop awslogin || true
 docker rm awslogin || true
 docker create --name awslogin --restart always \
