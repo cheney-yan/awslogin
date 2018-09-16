@@ -7,7 +7,15 @@ This tool uses AWS GetSigninToken interface to generate an URL to login to AWS m
 
 ## Quick start
 
-Assume your aws credentials are stored under `~/.aws/` directory:
+Assume your aws credentials are stored under `~/.aws/` directory, with content
+
+```
+[base_profile]
+aws_secret_access_key=qvhiPEi...N8m2IyOfzg8
+aws_access_key_id=AK...DGQ
+region = ap-southeast-2
+```
+You can simply run the service in the following command
 
 ```
 docker run --name awslogin --restart always \
@@ -16,12 +24,19 @@ docker run --name awslogin --restart always \
     cheneyyan/awslogin
 ```
 
-Then access it using your browser (where the AWS_PROFILE is the profile name you intend to use.)
-
+Then access it using your browser:
 ```
-http://localhost:1999/awslogin?baseProfile=AWS_PROFILE
-
+http://localhost:1999/awslogin?baseProfile=base_profile
 ```
+your browser will be forwarded to logged in session with based on the credential base_profile.
+
+Then access it using your browser:
+```
+http://localhost:1999/awslogin?baseProfile=base_profile&roleArn=arn:aws:iam::551423894163:role%2Fadmin
+```
+your browser will be forwarded to logged in session with based on the role `role_arn=arn:aws:iam::551423894163:role/admin`, given the IAM credential for base_profile are allowed to assume to this role.
+
+
 
 ## Why this tool
 - I am lazy, I guess. I don't wnat to type in my user name, (the super strong)password and pull out of my mobile for 2FA token every time I'm logging in.
@@ -31,18 +46,18 @@ http://localhost:1999/awslogin?baseProfile=AWS_PROFILE
 ## How this tool works
 This tool works as a local http server. On request:
 ```
-http://localhost:1999/awslogin?baseProfile=AWS_PROFILE
+http://localhost:1999/awslogin?baseProfile=base_profile
 ```
 It respond with 
 ```
 HTTP/1.0 302 FOUND
 Content-Type: text/html; charset=utf-8
 Content-Length: 2113
-Location: https://signin.aws.amazon.com/federation?Action=login&Issuer=AWS_PROFILE&Destination=https%3A//console.aws.amazon.com/&SigninToken=61ytivt40YMae3j-pmfy_4kaOMtkG_bbq8jVfxX...
+Location: https://signin.aws.amazon.com/federation?Action=login&Issuer=base_profile&Destination=https%3A//console.aws.amazon.com/&SigninToken=61ytivt40YMae3j-pmfy_4kaOMtkG_bbq8jVfxX...
 Server: Werkzeug/0.14.1 Python/3.6.6
 Date: Sun, 16 Sep 2018 01:35:49 GMT
 ```
-So that your browser will automatically be forwarded and logged in to AWS. Now you have successully logged in. Your permission is derived from what the <AWS_PROFILE> profile is allows.
+So that your browser will automatically be forwarded and logged in to AWS. Now you have successully logged in. Your permission is derived from what the `base_profile` profile is allows.
 
 ## TTL
 You can also specify the expected TTL of the login URL. Besides, AWS also has its own definition of TTL for these links. If not specified, the URLs generated has to be used within 15 mins and login session will expire between 12-36 hours. It also depends on whether your cedentail is IAM or a role. Check AWS documents for exact information.
@@ -66,7 +81,7 @@ NOTE: Encode your parameters carefully, especially the `/` character in roleArn 
 # Use Case
 ## Bookmark
 
-Just add `http://localhost:1999/awslogin?baseProfile=AWS_PROFILE` as the link of your bookmark to the AWS account. That simple!
+Just add `http://localhost:1999/awslogin?baseProfile=base_profile` as the link of your bookmark to the AWS account. That simple!
 
 ## Customized application
 
