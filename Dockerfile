@@ -1,6 +1,5 @@
 FROM alpine
-MAINTAINER Chenehy Yan <cheney.yan@gmail.com>
-
+LABEL maintainer="cheney.yan@gmail.com"
 ADD app /app
 
 RUN apk add --no-cache bash python3 \
