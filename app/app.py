@@ -6,6 +6,7 @@ import urllib
 import boto3
 import requests
 import botocore
+import configparser
 
 allow_all_policy = {
     "Version": "2012-10-17",
@@ -87,21 +88,20 @@ app = Flask(__name__)
 @app.route('/awslogin', methods=['GET'])
 def awslogin():
     try:
-        base_profile = request.args['baseProfile']
-        session_name = request.args.get('sessionName')
-        assumed_role = request.args.get('roleArn')
-        if not session_name:
-            if assumed_role:
-                session_name = "Assumed"
-            else:
-                session_name = base_profile
-        time_to_live = request.args.get('ttl')
-        url = aws_signin_url(
-            base_profile=base_profile,
-            session_name=session_name,
-            assumed_role=assumed_role,
-            time_to_live=time_to_live
-        )
+        profile = request.args.get('profile', 'prod-syd-role')
+        config = configparser.ConfigParser()
+        config.read(os.path.expanduser('~/.aws/credentials'))
+        if profile not in config._sections.keys():
+            return "Unknown profile", 500
+        try:
+            source_profile = config.get(profile, 'source_profile')
+            # it has a source profile
+            role = config.get(profile, 'role_arn')
+            url = aws_signin_url(base_profile=source_profile, session_name="Assumed", assumed_role=role)
+        except:  # this is already root
+            url = aws_signin_url(base_profile=profile,
+                                 session_name=profile)
+
         format = request.args.get('format', '')
         if format.lower() == 'txt':
             return url
