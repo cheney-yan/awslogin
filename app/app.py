@@ -7,6 +7,8 @@ import boto3
 import requests
 import botocore
 import configparser
+import sh
+from okta_aws_cred_helper.helper import Settings, get_credential
 
 allow_all_policy = {
     "Version": "2012-10-17",
@@ -19,29 +21,31 @@ allow_all_policy = {
     ]
 }
 
+okta_settings = None
 
-def aws_signin_url(base_profile, session_name=None, assumed_role=None, time_to_live=None):
+def aws_signin_url(base_profile=None, credentials={}, session_name=None, assumed_role=None, time_to_live=None):
     session = boto3.Session(profile_name=base_profile)
     sts_client = session.client('sts')
-    if not assumed_role:  # using the profile directly
-        if not time_to_live:
-            time_to_live = 129600
-        else:
-            time_to_live = int(time_to_live)
-        credentials = sts_client.get_federation_token(
-            Name=session_name,
-            DurationSeconds=time_to_live,
-            Policy=json.dumps(allow_all_policy)
-        ).get('Credentials')
-    else:
-        if not time_to_live:
-            time_to_live = 43200
-        else:
-            time_to_live = int(time_to_live)
-        credentials = sts_client.assume_role(
-            RoleArn=assumed_role,
-            RoleSessionName=session_name
-        ).get('Credentials')
+    if not credentials:
+      if not assumed_role:  # using the profile directly
+          if not time_to_live:
+              time_to_live = 129600
+          else:
+              time_to_live = int(time_to_live)
+          credentials = sts_client.get_federation_token(
+              Name=session_name,
+              DurationSeconds=time_to_live,
+              Policy=json.dumps(allow_all_policy)
+          ).get('Credentials')
+      else:
+          if not time_to_live:
+              time_to_live = 43200
+          else:
+              time_to_live = int(time_to_live)
+          credentials = sts_client.assume_role(
+              RoleArn=assumed_role,
+              RoleSessionName=session_name
+          ).get('Credentials')
     # Format credentials into JSON
     json_string_with_temp_credentials = '{'
     json_string_with_temp_credentials += '"sessionId":"' + \
@@ -93,14 +97,23 @@ def awslogin():
         config.read(os.path.expanduser('~/.aws/credentials'))
         if profile not in config._sections.keys():
             return "Unknown profile", 500
-        try:
-            source_profile = config.get(profile, 'source_profile')
-            # it has a source profile
-            role = config.get(profile, 'role_arn')
-            url = aws_signin_url(base_profile=source_profile, session_name="Assumed", assumed_role=role)
-        except:  # this is already root
-            url = aws_signin_url(base_profile=profile,
-                                 session_name=profile)
+        global okta_settings
+        okta_settings = Settings()
+        if profile.startswith('okta-'):
+            commandline = config.get(profile, 'credential_process')
+            role = commandline.split()[-1]
+            if role.startswith("'") or role.startswith('"'):
+              role = role[1:-1]
+            url = aws_signin_url(credentials=get_credential(role, okta_settings, return_value=True))
+        else:
+            try:
+                source_profile = config.get(profile, 'source_profile')
+                # it has a source profile
+                role = config.get(profile, 'role_arn')
+                url = aws_signin_url(base_profile=source_profile, session_name="Assumed", assumed_role=role)
+            except:  # this is already root
+                url = aws_signin_url(base_profile=profile,
+                                    session_name=profile)
 
         format = request.args.get('format', '')
         if format.lower() == 'txt':
