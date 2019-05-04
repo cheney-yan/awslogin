@@ -2,4 +2,4 @@ boto3
 requests
 six
 flask
-okta-aws-credential-helper > 0.2.0
+okta-aws-credential-helper
