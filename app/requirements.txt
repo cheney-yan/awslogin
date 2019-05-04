@@ -3,3 +3,4 @@ requests
 six
 flask
 okta-aws-credential-helper
+pyyaml
