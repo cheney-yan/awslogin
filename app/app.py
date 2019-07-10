@@ -71,7 +71,7 @@ def aws_signin_url(base_profile=None, credentials={}, session_name=None, assumed
     request_url = "https://signin.aws.amazon.com/federation" + request_parameters
     r = requests.get(request_url)
     # Returns a JSON document with a single element named SigninToken.
-    signin_token = json.loads(r.text)
+    signin_token = r.json()
 
     # Create URL where users can use the sign-in token to sign in to
     # the console. This URL must be used within 15 minutes after the
@@ -82,7 +82,6 @@ def aws_signin_url(base_profile=None, credentials={}, session_name=None, assumed
         signin_token=signin_token["SigninToken"]
     )
     request_url = "https://signin.aws.amazon.com/federation" + request_parameters
-
     return request_url
 
 
