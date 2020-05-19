@@ -91,7 +91,7 @@ A sample command for creating such application:
 ```
     nativefier --name "AWS ABCD" --internal-urls "amazon.com" --fast-quit  --disable-dev-tools "$url"
 ```
-Project link: https://github.com/jiahaog/nativefier
+Project link: https://github.com/cheney-yan/awslogin
 
 # License
 MIT.
