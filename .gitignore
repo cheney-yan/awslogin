@@ -1,26 +1,5 @@
-# Created by .ignore support plugin (hsz.mobi)
-### Example user template template
-### Example user template
-
-# IntelliJ project files
-.idea/*
-out
-gen
-*.pyc
-bookmark/index.html
-
-credentials
-ngrok
-*/.secure.*
-nohup.out
+.serverless
+.history
 .vscode
-hosts
-.venv
-.Pipfile.lock
-.cache/
-.history/
-*.retry
-.idea/misc.xml
 node_modules
-package-lock.json
-__pycache__
+.local-storage.json

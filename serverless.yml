@@ -1,0 +1,52 @@
+service: aws-login-generator
+
+provider:
+  name: aws
+  runtime: python3.7
+  region: ap-southeast-2 # only sydney is supported now
+  stage: ${opt:stage, 'personal'}
+  iamRoleStatements: # permissions as general
+    - Effect: Allow
+      Action:
+        - s3:Get*
+        - s3:Head*
+      Resource: "arn:aws:s3:::personal-aws-credentials/credentials"
+  stackTags:
+    project: aws-login-generator
+  warmup: false
+  timeout: 10
+  deploymentBucket:
+    name: ${self:custom.globalVars.deploymentBucket}
+  environments:
+    REGION: ${self:provider.region}
+    STAGE: ${self:provider.stage}
+
+functions:
+  login:
+    handler: handlers.aws_login
+    memorySize: 128
+    environment:
+      log_level: 'DEBUG'
+      credential_bucket: personal-aws-credentials
+      credential_key: credentials
+      path_randomizer: 100evP0SdSZ0
+    events:
+      - http:
+          path: '/login'
+          method: GET
+          throttling:
+            maxRequestsPerSecond: 1
+            maxConcurrentRequests: 1
+plugins:
+  - serverless-domain-manager
+  - serverless-python-requirements
+  - serverless-plugin-log-retention
+custom:
+  customDomain:
+    domainName: awslogin.${self:custom.globalVars.domain}
+    certificateName: ${self:custom.globalVars.certificateName}
+    endpointType: 'regional'
+    basePath: ''
+    stage: ${self:provider.stage}
+    createRoute53Record: false
+  globalVars: ${file(./globalVars.yml)}

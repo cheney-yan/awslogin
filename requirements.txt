@@ -1,6 +1,3 @@
+requests[security]
 boto3
-requests
-six
-flask
-okta-aws-credential-helper
-pyyaml
+simplejson

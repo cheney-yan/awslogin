@@ -1,0 +1,9 @@
+# this is the ultimate truth of infra. Do not change!
+varMap:
+  personal:
+    ap-southeast-2:
+      deploymentBucket: cheney-lambda-deployment-bucket-sydney
+region: ${self:provider.region}
+deploymentBucket: ${self:custom.globalVars.varMap.${self:provider.stage}.${self:provider.region}.deploymentBucket}
+domain: python3.tech
+certificateName: '*.python3.tech'
