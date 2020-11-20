@@ -114,7 +114,10 @@ def aws_login(event, context):
         event['queryStringParameters'].get('display_name')
     )
     response = {
-        "statusCode": 200,
+        "statusCode": 302,
+        "headers": {
+          "Location": url
+        },
         "body": json.dumps({
             'url': url
         })
