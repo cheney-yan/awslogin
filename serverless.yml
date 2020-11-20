@@ -10,7 +10,7 @@ provider:
       Action:
         - s3:Get*
         - s3:Head*
-      Resource: "arn:aws:s3:::personal-aws-credentials/credentials"
+      Resource: "arn:aws:s3:::personal-aws-credentials/*"
   stackTags:
     project: aws-login-generator
   warmup: false
@@ -28,8 +28,7 @@ functions:
     environment:
       log_level: 'DEBUG'
       credential_bucket: personal-aws-credentials
-      credential_key: credentials
-      path_randomizer: 100evP0SdSZ0
+      credential_key: credentials_config.json
     events:
       - http:
           path: '/login'
@@ -43,7 +42,7 @@ plugins:
   - serverless-plugin-log-retention
 custom:
   customDomain:
-    domainName: awslogin.${self:custom.globalVars.domain}
+    domainName: aws.${self:custom.globalVars.domain}
     certificateName: ${self:custom.globalVars.certificateName}
     endpointType: 'regional'
     basePath: ''

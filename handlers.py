@@ -1,14 +1,16 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+import botocore
 import logging
 import urllib
 import os
-import simplejson
+import json
 import boto3
 import configparser
+
+import requests
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
-import botocore
 allow_all_policy = {
     "Version": "2012-10-17",
     "Statement": [
@@ -20,38 +22,49 @@ allow_all_policy = {
     ]
 }
 
-def get_credential_config(bucket, key):
-  local_file_path='/tmp/credentials'
-  s3 = boto3.resource('s3')
-  s3.Bucket(bucket).download_file(key, local_file_path)
 
-  config = configparser.ConfigParser()
-  config.read(local_file_path)
-  return config
+def get_profile_config():
+    bucket = os.environ['credential_bucket']
+    key = os.environ['credential_key']
+    logger.info("Retrieving credentials from s3://%s/%s",
+                bucket, key)
+    local_file_path = '/tmp/profiles.json'
+    s3 = boto3.resource('s3')
+    s3.Bucket(bucket).download_file(key, local_file_path)
 
-def aws_signin_url(base_profile=None, credentials={}, session_name=None, assumed_role=None, time_to_live=None):
-    session = boto3.Session(profile_name=base_profile)
+    with open(local_file_path) as f:
+        return json.load(f)
+
+
+def aws_signin_url(key_id, display_name, time_to_live=None):
+    credentials_config = get_profile_config()
+    logger.info("Retrieving from key id: %s, profile name: %s",
+                key_id, display_name)
+    access_key = credentials_config[display_name]['aws_secret_access_key']
+    session = boto3.Session(aws_access_key_id=key_id,
+                            aws_secret_access_key=access_key)
+    assumed_role = credentials_config[display_name].get('assumed_role')
     sts_client = session.client('sts')
-    if not credentials:
-      if not assumed_role:  # using the profile directly
-          if not time_to_live:
-              time_to_live = 129600
-          else:
-              time_to_live = int(time_to_live)
-          credentials = sts_client.get_federation_token(
-              Name=session_name,
-              DurationSeconds=time_to_live,
-              Policy=simplejson.dumps(allow_all_policy)
-          ).get('Credentials')
-      else:
-          if not time_to_live:
-              time_to_live = 43200
-          else:
-              time_to_live = int(time_to_live)
-          credentials = sts_client.assume_role(
-              RoleArn=assumed_role,
-              RoleSessionName=session_name
-          ).get('Credentials')
+    if not assumed_role:  # using the profile directly
+        if not time_to_live:
+            time_to_live = 129600
+        else:
+            time_to_live = int(time_to_live)
+        logger.debug("Retriving using key_id %s, key ***%s", key_id, access_key[-3:-1])
+        credentials = sts_client.get_federation_token(
+            Name=display_name,
+            DurationSeconds=time_to_live,
+            Policy=json.dumps(allow_all_policy)
+        ).get('Credentials')
+    else:
+        if not time_to_live:
+            time_to_live = 43200
+        else:
+            time_to_live = int(time_to_live)
+        credentials = sts_client.assume_role(
+            RoleArn=assumed_role,
+            RoleSessionName=display_name
+        ).get('Credentials')
     # Format credentials into JSON
     json_string_with_temp_credentials = '{'
     json_string_with_temp_credentials += '"sessionId":"' + \
@@ -83,64 +96,48 @@ def aws_signin_url(base_profile=None, credentials={}, session_name=None, assumed
     # the console. This URL must be used within 15 minutes after the
     # sign-in token was issued.
     request_parameters = '?Action=login&Issuer={issuer}&Destination={destination}&SigninToken={signin_token}'.format(
-        issuer=session_name,
+        issuer=display_name,
         destination=urllib.parse.quote("https://console.aws.amazon.com/"),
         signin_token=signin_token["SigninToken"]
     )
     request_url = "https://signin.aws.amazon.com/federation" + request_parameters
     return request_url
 
-def awslogin(profile):
-    """
-    return error, status_code
-    """
-    try:
-        config=get_credential_config()
-        if profile not in config._sections.keys():
-            return "Unknown profile", 500
-        try:
-            source_profile = config.get(profile, 'source_profile')
-            # it has a source profile
-            role = config.get(profile, 'role_arn')
-            url = aws_signin_url(base_profile=source_profile, session_name="Assumed", assumed_role=role)
-        except:
-            url = aws_signin_url(base_profile=profile,
-                                session_name=profile)
-
-        return url, 200
-    except botocore.exceptions.ClientError as e:
-        if "session credentials" in e.response['Error'].get('Message'):
-            return "ERROR: You probably are using a assumed role profile. Base profile must be of static (IAM user) identity.", 400
-    except Exception as e:
-        return str(e), 500
-
 
 def aws_login(event, context):
-  if 'log_level' in os.environ:
-    logger.setLevel(os.environ['log_level'])
-  logger.debug(event)
-  
-  awslogin(None)
-  response = {
-    "statusCode": 200,
-    "body": simplejson.dumps(event)
-  }
+    if 'log_level' in os.environ:
+        logger.setLevel(os.environ['log_level'])
+    logger.debug(event)
 
-  return response
+    url = aws_signin_url(
+        event['queryStringParameters'].get('key_id'),
+        event['queryStringParameters'].get('display_name')
+    )
+    response = {
+        "statusCode": 200,
+        "body": json.dumps({
+            'url': url
+        })
+    }
+
+    return response
 
 
 if __name__ == "__main__":  # local debug
-  console = logging.StreamHandler()
-  console.setLevel(logging.INFO)
-  formatter = logging.Formatter('%(name)-12s: %(levelname)-8s %(message)s')
-  console.setFormatter(formatter)
-  logger.addHandler(console)
-  test_event = {
-    "queryStringParameters": {
-        "key": "abc",
-        "profile": "def"
-    },
-  }
+    console = logging.StreamHandler()
+    console.setLevel(logging.DEBUG)
+    formatter = logging.Formatter('%(name)-12s: %(levelname)-8s %(message)s')
+    console.setFormatter(formatter)
+    logger.addHandler(console)
+    os.environ['credential_bucket'] = 'personal-aws-credentials'
+    os.environ['credential_key'] = 'credentials_config.json'
+    os.environ['log_level'] = 'DEBUG'
+    test_event = {
+        "queryStringParameters": {
+            "key_id": 'AKIAIJO4TS44V4Y6SJNA',
+            "display_name": "edu1"
+        },
+    }
 
-  resp = aws_login(test_event, None)
-  print(resp)
+    resp = aws_login(test_event, None)
+    print(resp)
